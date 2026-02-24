@@ -35,7 +35,7 @@ class Game(models.Model):
     def make_guess(self, letter):
         letter = letter.lower()
 
-        if self.state != self.STATE_IN_PROGRESS:
+        if self.game_state != self.STATE_IN_PROGRESS:
             return None
 
         if letter in [c.lower() for c in self.guessed_letters]:

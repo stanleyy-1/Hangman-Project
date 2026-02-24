@@ -2,16 +2,21 @@
 
   <button onclick="newGame()">New Game</button>
 
-  <pre id="output"></pre>
+  <pre id="id"></pre>
+  <pre id="gameState"></pre>
 
   <script>
     async function newGame() {
-      const res = await fetch('/game/new', {
+      const newGameRes = await fetch('/game/new', {
         method: 'POST',
         headers: { 'X-CSRFToken': getCookie('csrftoken') }
       });
-      const data = await res.json();
-      document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+      const newGameData = await newGameRes.json();
+      document.getElementById('id').textContent = JSON.stringify(newGameData, null, 2);
+
+      const stateRes = await fetch(`/game/${newGameData.id}`);
+      const stateData = await stateRes.json();
+      document.getElementById('gameState').textContent = JSON.stringify(stateData, null, 2);
     }
 
     function getCookie(name) {

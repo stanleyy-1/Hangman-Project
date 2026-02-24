@@ -19,9 +19,9 @@ class NewGameView(APIView):
 
 
 class GameStateView(APIView):
-    def get(self, request, game_id):
+    def get(self, request, id):
         try:
-            game = Game.objects.get(pk=game_id)
+            game = Game.objects.get(pk=id)
         except Game.DoesNotExist:
             return Response({"error": "Game not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -30,9 +30,9 @@ class GameStateView(APIView):
 
 
 class GuessView(APIView):
-    def post(self, request, game_id):
+    def post(self, request, id):
         try:
-            game = Game.objects.get(pk=game_id)
+            game = Game.objects.get(pk=id)
         except Game.DoesNotExist:
             return Response({"error": "Game not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -44,7 +44,7 @@ class GuessView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if game.state != Game.STATE_IN_PROGRESS:
+        if game.game_state != Game.STATE_IN_PROGRESS:
             serializer = GameStateSerializer(game)
             data = serializer.data
             data["correct"] = None

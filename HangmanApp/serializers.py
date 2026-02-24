@@ -9,7 +9,7 @@ class GameStateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Game
         fields = [
-            "game_id",
+            "id",
             "game_state",
             "word_state",
             "incorrect_guesses",
