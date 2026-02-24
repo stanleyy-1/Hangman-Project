@@ -14,4 +14,6 @@ class GameStateSerializer(serializers.ModelSerializer):
             "word_state",
             "incorrect_guesses",
             "incorrect_guesses_remaining",
+            "guessed_letters",
+            "word",
         ]

@@ -1,53 +1,194 @@
-  <h1>Hangman</h1>
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hangman</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
 
-  <button onclick="newGame()">New Game</button>
+  </head>
+  <body class="bg-dark text-white">
 
-  <pre id="id"></pre>
-  <pre id="gameState"></pre>
+    <div id="startScreen" class="d-flex flex-column justify-content-center align-items-center vh-100">
 
-  <div id="guessSection" style="display:none;">
-    <input id="letterInput" type="text" maxlength="1" placeholder="Enter a letter" />
-    <button onclick="makeGuess()">Guess</button>
-  </div>
+      <h1 class="display-1 fw-bold mb-4">Hangman</h1>
 
-  <script>
-    let currentGameId = null;
+      <button class="btn btn-outline-light btn-lg px-5" onclick="newGame()">
+        New Game
+      </button>
 
-    async function newGame() {
-      const newGameRes = await fetch('/game/new', {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCookie('csrftoken') }
+    </div>
+    <div id="gameScreen" class="d-none d-flex flex-column align-items-center vh-100 p-4">
+      
+      <!-- Section 1: Heading -->
+      <h4 class="mb-4">Game <span id="gameId"></span></h4>
+      
+      <!-- Section 2: Game Display and Details -->
+      <div class="row flex-grow-1 mb-4 w-100">
+
+        <div class="col-5 d-flex align-items-center justify-content-center">
+          <img id="hangmanImg" src="{% static 'images/hangman_0.svg' %}" alt="Hangman stage" class="img-fluid" style="max-height: 300px;">
+        </div>
+
+        <div class="col-7 d-flex flex-column justify-content-center">
+          <p class="mb-2">Incorrect Guesses: <span id="wrongCount">0</span> / <span id="maxWrong"></span></p>
+          <p id="wordDisplay" class="display-6 mb-3"></p>
+          <p class="text-secondary mb-0">Guessed Letters: <span id="guessedLetters">—</span></p>
+        </div>
+
+      </div>
+
+      <!-- Section 3: On-screen keyboard -->
+      <div id="keyboard" class="d-flex flex-column align-items-center gap-2 pb-4"></div>
+
+    </div>
+
+    <div class="modal" id="gameOverModal" data-bs-backdrop="static">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content bg-dark text-white border-secondary">
+          <div class="modal-body text-center p-5">
+            <h2 id="gameOverTitle" class="display-4 fw-bold mb-3"></h2>
+            <p id="gameOverMessage" class="text-secondary mb-4"></p>
+            <button class="btn btn-outline-light btn-lg px-5" onclick="restartGame()">
+              Play Again
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    <script>
+      const hangmanImgBase = "{% static 'images/' %}";
+      let currentGameId = null;
+      let incorrectGuesses = 0;
+      let maxIncorrect = null;
+      let lettersGuessed = [];
+      let currentGameState = null;
+      async function newGame() {
+
+        document.getElementById('startScreen').classList.add('d-none');
+        
+        const newGameRes = await fetch('/game/new', {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCookie('csrftoken') }
+        });
+        const newGameData = await newGameRes.json();
+        currentGameId = newGameData.id;
+        document.getElementById('gameId').textContent = currentGameId;
+
+        
+        const stateRes = await fetch(`/game/${currentGameId}`);
+        const stateData = await stateRes.json();
+        wordState = stateData.word_state.split('');
+        incorrectGuesses = stateData.incorrect_guesses;
+        maxIncorrect     = stateData.incorrect_guesses_remaining;
+        currentGameState = stateData.game_state;
+        document.getElementById('wordDisplay').textContent = wordState.join(' ');
+        document.getElementById('wrongCount').textContent  = incorrectGuesses;
+        document.getElementById('maxWrong').textContent    = maxIncorrect;
+
+        document.getElementById('gameScreen').classList.remove('d-none');
+        buildKeyboard();
+      }
+
+      function buildKeyboard() {
+        const keyboard = document.getElementById('keyboard');
+        const rows = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+
+        rows.forEach((row, rowIndex) => {
+          const rowDiv = document.createElement('div');
+          rowDiv.className = 'd-flex gap-2';
+
+          // Indent middle and bottom rows to mimic QWERTY stagger
+          if (rowIndex === 1) rowDiv.style.marginRight = '15px';
+          if (rowIndex === 2) rowDiv.style.marginRight = '65px';
+
+          row.split('').forEach(letter => {
+            const btn = document.createElement('button');
+            btn.textContent = letter;
+            btn.id = 'key-' + letter;
+            btn.className = 'btn btn-outline-light';
+            btn.style.width = '42px';
+            btn.onclick = () => makeGuess(letter);
+            rowDiv.appendChild(btn);
+          });
+
+          keyboard.appendChild(rowDiv);
+        });
+      }
+
+      async function makeGuess(letter) {
+        const btn = document.getElementById('key-' + letter.toUpperCase());
+        if (btn) btn.disabled = true;
+
+        const guessRes = await fetch(`/game/${currentGameId}/guess`, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ letter }),
+        });
+        const guessData  = await guessRes.json();
+        wordState        = guessData.word_state.split('');
+        incorrectGuesses = guessData.incorrect_guesses;
+        lettersGuessed   = guessData.guessed_letters.map(l => l.toUpperCase());
+        currentGameState = guessData.game_state;
+        document.getElementById('wordDisplay').textContent    = wordState.join(' ');
+        document.getElementById('wrongCount').textContent     = incorrectGuesses;
+        document.getElementById('guessedLetters').textContent = lettersGuessed;
+        updateHangman();
+        if (currentGameState === 'Won') {
+          document.getElementById('gameOverTitle').textContent = 'You Won!';
+          document.getElementById('gameOverMessage').textContent = 'Congradulations.';
+          const modal = new bootstrap.Modal(document.getElementById('gameOverModal'));
+          modal.show();
+        } else if (currentGameState === 'Lost') {
+          document.getElementById('gameOverTitle').textContent = 'Game Over';
+          document.getElementById('gameOverMessage').textContent = `The word was: ${guessData.word}`;
+          const modal = new bootstrap.Modal(document.getElementById('gameOverModal'));
+          modal.show();
+        }
+      }
+
+      function updateHangman() {
+        const incorrect_guesses_remaining = maxIncorrect - incorrectGuesses;
+        if (incorrectGuesses != 0){
+          document.getElementById('hangmanImg').src = hangmanImgBase + `hangman_${4-incorrect_guesses_remaining}.svg`;
+        } else {
+          document.getElementById('hangmanImg').src = hangmanImgBase + `hangman_0.svg`;
+        }
+        
+      }
+
+      document.addEventListener('keydown', function(event) {
+        if (currentGameState === "InProgress" && event.key.match(/^[a-zA-Z]$/)) {
+          const letter = event.key.toUpperCase();
+          if (!lettersGuessed.includes(letter.toUpperCase())) {
+            makeGuess(letter);
+          }
+        }
       });
-      const newGameData = await newGameRes.json();
-      document.getElementById('id').textContent = JSON.stringify(newGameData, null, 2);
-      currentGameId = newGameData.id;
 
+      function restartGame() {
+        bootstrap.Modal.getInstance(document.getElementById('gameOverModal')).hide();
+        document.getElementById('keyboard').innerHTML = '';
+        document.getElementById('guessedLetters').textContent = '—';
+        currentGameId = null;
+        incorrectGuesses = 0;
+        maxIncorrect = null;
+        lettersGuessed = [];
+        newGame();
+        updateHangman();
+}
 
-      const stateRes = await fetch(`/game/${currentGameId}`);
-      const stateData = await stateRes.json();
-      document.getElementById('gameState').textContent = JSON.stringify(stateData, null, 2);
-      document.getElementById('guessSection').style.display = 'block';
-    }
+      function getCookie(name) {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+        return match ? match[2] : '';
+      }
+    </script>
 
-    async function makeGuess() {
-      const letter = document.getElementById('letterInput').value;
-      document.getElementById('letterInput').value = '';
-
-      const guessRes = await fetch(`/game/${currentGameId}/guess`, {
-        method: 'POST',
-        headers: {
-          'X-CSRFToken': getCookie('csrftoken'),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ letter }),
-      });
-      const guessData = await guessRes.json();
-      document.getElementById('gameState').textContent = JSON.stringify(guessData, null, 2);
-    }
-
-    function getCookie(name) {
-      const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
-      return match ? match[2] : '';
-    }
-  </script>
-</body>
+  </body>
+</html>

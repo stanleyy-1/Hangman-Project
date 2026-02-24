@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 260" width="200" height="260">
+  <g stroke="white" stroke-width="4" stroke-linecap="round" fill="none">
+    <!-- Base -->
+    <line x1="20" y1="240" x2="180" y2="240"/>
+    <!-- Pole -->
+    <line x1="60" y1="240" x2="60" y2="20"/>
+    <!-- Top beam -->
+    <line x1="60" y1="20" x2="140" y2="20"/>
+    <!-- Rope -->
+    <line x1="140" y1="20" x2="140" y2="55"/>
+  </g>
+</svg>
