@@ -5,7 +5,14 @@
   <pre id="id"></pre>
   <pre id="gameState"></pre>
 
+  <div id="guessSection" style="display:none;">
+    <input id="letterInput" type="text" maxlength="1" placeholder="Enter a letter" />
+    <button onclick="makeGuess()">Guess</button>
+  </div>
+
   <script>
+    let currentGameId = null;
+
     async function newGame() {
       const newGameRes = await fetch('/game/new', {
         method: 'POST',
@@ -13,10 +20,29 @@
       });
       const newGameData = await newGameRes.json();
       document.getElementById('id').textContent = JSON.stringify(newGameData, null, 2);
+      currentGameId = newGameData.id;
 
-      const stateRes = await fetch(`/game/${newGameData.id}`);
+
+      const stateRes = await fetch(`/game/${currentGameId}`);
       const stateData = await stateRes.json();
       document.getElementById('gameState').textContent = JSON.stringify(stateData, null, 2);
+      document.getElementById('guessSection').style.display = 'block';
+    }
+
+    async function makeGuess() {
+      const letter = document.getElementById('letterInput').value;
+      document.getElementById('letterInput').value = '';
+
+      const guessRes = await fetch(`/game/${currentGameId}/guess`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ letter }),
+      });
+      const guessData = await guessRes.json();
+      document.getElementById('gameState').textContent = JSON.stringify(guessData, null, 2);
     }
 
     function getCookie(name) {
